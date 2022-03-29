@@ -40,7 +40,7 @@ func sendMessage() {
 		}
 
 		time.Sleep(time.Second * 2)
-		if statusData.LeaderIsLive == false && statusData.Status != "leader" {
+		if !statusData.LeaderIsLive {
 			voting()
 		}
 	}
@@ -58,7 +58,7 @@ func leaderMessage() {
 }
 
 func majorityIsAvailable() bool {
-	countAviable := 0
+	countAvailable := 0
 	timeout := time.Second / 10
 	client := http.Client{
 		Timeout: timeout,
@@ -71,11 +71,11 @@ func majorityIsAvailable() bool {
 			continue
 		}
 		if resp.StatusCode == 200 {
-			countAviable++
+			countAvailable++
 		}
 	}
 
-	return configs.CountServices/2 < countAviable
+	return configs.CountServices/2 < countAvailable
 }
 
 func voting() {
