@@ -31,13 +31,12 @@ func sendMessage() {
 		}
 
 		if statusData.Status == "leader" {
-			client := http.Client{}
-			for _, h := range configs.HostsOtherServices {
-				req, _ := http.NewRequest("GET", "http://localhost:"+h+"/mp", nil)
-				req.Header.Set("server_status", "leader")
-				req.Header.Set("hostAddress", configs.Host)
-				go client.Do(req)
+			if majorityIsAvailable() {
+				leaderMessage()
+			} else {
+				statusData.Status = "follower"
 			}
+
 			continue
 		}
 
@@ -45,6 +44,35 @@ func sendMessage() {
 			voting()
 		}
 	}
+}
+
+func leaderMessage() {
+	client := http.Client{}
+
+	for _, h := range configs.HostsOtherServices {
+		req, _ := http.NewRequest("GET", "http://localhost:"+h+"/mp", nil)
+		req.Header.Set("server_status", "leader")
+		req.Header.Set("hostAddress", configs.Host)
+		go client.Do(req)
+	}
+}
+
+func majorityIsAvailable() bool {
+	client := http.Client{}
+	countAviable := 0
+
+	for _, h := range configs.HostsOtherServices {
+		req, _ := http.NewRequest("GET", "http://localhost:"+h+"/ping", nil)
+		resp, err := client.Do(req)
+		if err != nil {
+			continue
+		}
+		if resp.StatusCode == 200 {
+			countAviable++
+		}
+	}
+
+	return configs.CountServices/2 < countAviable
 }
 
 func voting() {
@@ -72,11 +100,16 @@ func voting() {
 }
 
 func listen() {
+	http.HandleFunc("/ping", ping)
 	http.HandleFunc("/mp", messageProcessing)
 	err := http.ListenAndServe(":"+configs.Host, nil)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func ping(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func messageProcessing(w http.ResponseWriter, r *http.Request) {
