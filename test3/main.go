@@ -24,8 +24,8 @@ func main() {
 func sendMessage() {
 	for {
 		statusData.LeaderIsLive = false
-
 		time.Sleep(time.Second)
+
 		if statusData.LeaderIsLive == true {
 			continue
 		}
@@ -33,13 +33,13 @@ func sendMessage() {
 		if statusData.Status == "leader" {
 			if majorityIsAvailable() {
 				leaderMessage()
+				continue
 			} else {
 				statusData.Status = "follower"
 			}
-
-			continue
 		}
 
+		time.Sleep(time.Second * 2)
 		if statusData.LeaderIsLive == false && statusData.Status != "leader" {
 			voting()
 		}
@@ -58,8 +58,11 @@ func leaderMessage() {
 }
 
 func majorityIsAvailable() bool {
-	client := http.Client{}
 	countAviable := 0
+	timeout := time.Second / 10
+	client := http.Client{
+		Timeout: timeout,
+	}
 
 	for _, h := range configs.HostsOtherServices {
 		req, _ := http.NewRequest("GET", "http://localhost:"+h+"/ping", nil)
@@ -77,8 +80,12 @@ func majorityIsAvailable() bool {
 
 func voting() {
 	statusData.Status = "candidate"
-	client := http.Client{}
 	countVoices := 0
+
+	timeout := time.Second / 20
+	client := http.Client{
+		Timeout: timeout,
+	}
 
 	for _, h := range configs.HostsOtherServices {
 		req, _ := http.NewRequest("GET", "http://localhost:"+h+"/mp", nil)
@@ -109,7 +116,6 @@ func listen() {
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
-
 }
 
 func messageProcessing(w http.ResponseWriter, r *http.Request) {
@@ -128,5 +134,6 @@ func messageProcessing(w http.ResponseWriter, r *http.Request) {
 		if statusData.Status != "leader" {
 			w.Header().Add("voice", "yes")
 		}
+		statusData.LeaderIsLive = true
 	}
 }
